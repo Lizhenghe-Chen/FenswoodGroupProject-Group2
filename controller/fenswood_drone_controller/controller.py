@@ -7,6 +7,8 @@ from sensor_msgs.msg import NavSatFix
 # import message definition for sending setpoint
 from geographic_msgs.msg import GeoPoseStamped
 
+from geometry_msgs.msg import PoseStamped
+
 # import service definitions for changing mode, arming, take-off and generic command
 from mavros_msgs.srv import SetMode, CommandBool, CommandTOL, CommandLong
 
@@ -19,6 +21,7 @@ class FenswoodDroneController(Node):
         self.last_pos = None       # store for last received position message
         self.init_alt = None       # store for global altitude at start
         self.last_alt_rel = None   # store for last altitude relative to start
+        self.last_pose = None
         # create service clients for long command (datastream requests)...
         self.cmd_cli = self.create_client(CommandLong, '/vehicle_1/mavros/cmd/command')
         # ... for mode changes ...
@@ -41,6 +44,8 @@ class FenswoodDroneController(Node):
         state_sub = self.create_subscription(State, '/vehicle_1/mavros/state', self.state_callback, 10)
         # ...and the other for global position
         pos_sub = self.create_subscription(NavSatFix, '/vehicle_1/mavros/global_position/global', self.position_callback, 10)
+
+        pose_sub = self.create_subscription(PoseStamped, '/vehicle_1/mavros/local_position/pose', self.pose_callback, 10)
         # create a ROS2 timer to run the control actions
         self.timer = self.create_timer(1.0, self.timer_callback)
 
@@ -58,6 +63,17 @@ class FenswoodDroneController(Node):
         self.get_logger().debug('Drone at {}N,{}E altitude {}m'.format(msg.latitude,
                                                                         msg.longitude,
                                                                         self.last_alt_rel))
+    
+    def pose_callback(self,msg):
+        self.last_pose = msg.pose
+        self.get_logger().debug('Drone at local position X:{}, Y:{}, Z:{}'.format(msg.pose.position.x,
+                                                                                    msg.pose.position.y,
+                                                                                    msg.pose.position.z))
+       
+        self.get_logger().debug('Drone at local orientation X:{}, Y:{}, Z:{}, W:{}'.format(msg.pose.orientation.x,
+                                                                                   msg.pose.orientation.y,
+                                                                                    msg.pose.orientation.z,
+                                                                                    msg.pose.orientation.w))
 
     def request_data_stream(self,msg_id,msg_interval):
         cmd_req = CommandLong.Request()
@@ -99,6 +115,8 @@ class FenswoodDroneController(Node):
                     self.get_logger().info('Drone initialized')
                     # send command to request regular position updates
                     self.request_data_stream(33, 1000000)
+
+                    self.request_data_stream(32, 1000000)
                     # change mode to GUIDED
                     self.change_mode("GUIDED")
                     # move on to arming

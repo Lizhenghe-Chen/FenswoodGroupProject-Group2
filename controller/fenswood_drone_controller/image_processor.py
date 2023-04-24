@@ -23,7 +23,7 @@ class ImageProcessor(Node):
         img = self.br.imgmsg_to_cv2(msg)
         # can do OpenCV stuff on img now
         shp = img.shape # just get the size
-        self.get_logger().info('Got an image of {} x {}'.format(shp[0],shp[1]))
+        self.get_logger().debug('Got an image of {} x {}'.format(shp[0],shp[1]))
                     
 
 def main(args=None):
