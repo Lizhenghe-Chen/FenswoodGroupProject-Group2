@@ -2,7 +2,7 @@ import rclpy
 from rclpy.node import Node
 
 # import message definitions for receiving status and position
-from mavros_msgs.msg import State
+from mavros_msgs.msg import State, WaypointList
 from sensor_msgs.msg import NavSatFix
 # import message definition for sending setpoint
 from geographic_msgs.msg import GeoPoseStamped
@@ -26,6 +26,9 @@ class FenswoodDroneController(Node):
         self.last_pose = None
         self.current_mode = None
         self.user_command = 'init'
+        self.waypoints = []
+        self.waypoints_index = 0
+        self.in_fly = False
         # create service clients for long command (datastream requests)...
         self.cmd_cli = self.create_client(CommandLong, '/vehicle_1/mavros/cmd/command')
         # ... for mode changes ...
@@ -52,6 +55,8 @@ class FenswoodDroneController(Node):
         pose_sub = self.create_subscription(PoseStamped, '/vehicle_1/mavros/local_position/pose', self.pose_callback, 10)
 
         mission_start_sub = self.create_subscription(Empty, '/mission_start', self.start_callback, 10)
+
+        mission_waypoint_sub = self.create_subscription(WaypointList, '/vehicle_1/mavros/cutom_waypoints', self.waypoints_callback, 10)
 
         # mission_pause_sub = self.create_subscription(Empty, '/mission_pause', self.start_callback, 10)
 
@@ -87,9 +92,16 @@ class FenswoodDroneController(Node):
                                                                                     msg.pose.orientation.w))
         
     def start_callback(self,msg):
-        if(self.user_command != 'run'):
-            self.user_command = 'run'
-            self.get_logger().info('Start button pressed. The process of controller will be started.')
+        if (self.user_command != 'run'):
+            if(self.waypoints == None or len(self.waypoints) == 0):
+                self.get_logger().warn('START button pressed, but the waypoint list is empty.')
+            else:
+                self.user_command = 'run'
+                self.get_logger().info('START button pressed. The process of controller will be started.')
+    
+    def waypoints_callback(self,msg):
+        self.waypoints = msg.waypoints
+        self.get_logger().info('Waypoints set. {} waypoints passed to the drone.'.format(len(self.waypoints)))
     
     def emergency_stop(self):
         return 0
@@ -151,7 +163,7 @@ class FenswoodDroneController(Node):
                     return('init')
             elif self.control_state == 'arming':
                 self.get_logger().info('Waiting for user commands. Press the START button to start the mission.')
-                return('init')
+                return('arming')
             else:
                 return('init')
         elif self.user_command == 'run':
@@ -176,7 +188,7 @@ class FenswoodDroneController(Node):
                 if self.last_alt_rel > 19.0:
                     self.get_logger().info('Close enough to flight altitude')
                     # move drone by sending setpoint message
-                    self.flyto(51.423, -2.671, self.init_alt - 30.0) # unexplained correction factor on altitude
+                    # self.flyto(51.423, -2.671, self.init_alt - 30.0) # unexplained correction factor on altitude
                     return('on_way')
                 elif self.state_timer > 60:
                     # timeout
@@ -186,12 +198,23 @@ class FenswoodDroneController(Node):
                     self.get_logger().info('Climbing, altitude {}m'.format(self.last_alt_rel))
                     return('climbing')
             elif self.control_state == 'on_way':
+                if(self.in_fly == False):
+                   lat = self.waypoints[self.waypoints_index].x_lat
+                   long = self.waypoints[self.waypoints_index].y_long
+                   alt = self.waypoints[self.waypoints_index].z_alt - 50
+                   self.flyto(lat, long, alt)
+                   self.in_fly = True
                 d_lon = self.last_pos.longitude - self.last_target.pose.position.longitude
                 d_lat = self.last_pos.latitude - self.last_target.pose.position.latitude
                 if (abs(d_lon) < 0.0001) & (abs(d_lat) < 0.0001):
                     self.get_logger().info('Close enough to target delta={},{}'.format(d_lat,d_lon))
-                    return('landing')
-                elif self.state_timer > 60:
+                    if(self.waypoints_index < len(self.waypoints) - 1):
+                        self.waypoints_index += 1
+                        self.in_fly = False
+                        return ('on_way')
+                    else:
+                        return('landing')
+                elif self.state_timer > 300:
                     # timeout
                     self.get_logger().error('Failed to reach target')
                     return('landing')
