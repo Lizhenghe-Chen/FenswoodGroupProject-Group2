@@ -7,6 +7,8 @@ from sensor_msgs.msg import NavSatFix
 # import message definition for sending setpoint
 from geographic_msgs.msg import GeoPoseStamped
 
+from std_msgs.msg import Bool, Empty, Int16
+
 from geometry_msgs.msg import PoseStamped
 
 # import service definitions for changing mode, arming, take-off and generic command
@@ -22,6 +24,8 @@ class FenswoodDroneController(Node):
         self.init_alt = None       # store for global altitude at start
         self.last_alt_rel = None   # store for last altitude relative to start
         self.last_pose = None
+        self.current_mode = None
+        self.user_command = 'init'
         # create service clients for long command (datastream requests)...
         self.cmd_cli = self.create_client(CommandLong, '/vehicle_1/mavros/cmd/command')
         # ... for mode changes ...
@@ -46,6 +50,13 @@ class FenswoodDroneController(Node):
         pos_sub = self.create_subscription(NavSatFix, '/vehicle_1/mavros/global_position/global', self.position_callback, 10)
 
         pose_sub = self.create_subscription(PoseStamped, '/vehicle_1/mavros/local_position/pose', self.pose_callback, 10)
+
+        mission_start_sub = self.create_subscription(Empty, '/mission_start', self.start_callback, 10)
+
+        # mission_pause_sub = self.create_subscription(Empty, '/mission_pause', self.start_callback, 10)
+
+        # mode_control_sub = self.create_subscription(Int16, '/vehicle_1/mode_control', self.mode_mannual_callback, 10)
+
         # create a ROS2 timer to run the control actions
         self.timer = self.create_timer(1.0, self.timer_callback)
 
@@ -74,6 +85,14 @@ class FenswoodDroneController(Node):
                                                                                    msg.pose.orientation.y,
                                                                                     msg.pose.orientation.z,
                                                                                     msg.pose.orientation.w))
+        
+    def start_callback(self,msg):
+        if(self.user_command != 'run'):
+            self.user_command = 'run'
+            self.get_logger().info('Start button pressed. The process of controller will be started.')
+    
+    def emergency_stop(self):
+        return 0
 
     def request_data_stream(self,msg_id,msg_interval):
         cmd_req = CommandLong.Request()
@@ -84,10 +103,14 @@ class FenswoodDroneController(Node):
         self.get_logger().info('Requested msg {} every {} us'.format(msg_id,msg_interval))
 
     def change_mode(self,new_mode):
-        mode_req = SetMode.Request()
-        mode_req.custom_mode = new_mode
-        future = self.mode_cli.call_async(mode_req)
-        self.get_logger().info('Request sent for {} mode.'.format(new_mode))
+        if(self.current_mode != new_mode):
+            mode_req = SetMode.Request()
+            mode_req.custom_mode = new_mode
+            self.mode = new_mode
+            future = self.mode_cli.call_async(mode_req)
+            self.get_logger().info('Request sent for {} mode.'.format(new_mode))
+        else:
+            self.get_logger().info('Tried changing mode to {} mode, but the drone has been in this mode already'.format(new_mode))
 
     def arm_request(self):
         arm_req = CommandBool.Request()
@@ -109,77 +132,93 @@ class FenswoodDroneController(Node):
         self.get_logger().info('Sent drone to {}N, {}E, altitude {}m'.format(lat,lon,alt)) 
 
     def state_transition(self):
-        if self.control_state =='init':
-            if self.last_status:
-                if self.last_status.system_status==3:
-                    self.get_logger().info('Drone initialized')
-                    # send command to request regular position updates
-                    self.request_data_stream(33, 1000000)
+        if self.user_command == 'init':
+            if self.control_state == 'init':
+                if self.last_status:
+                    if self.last_status.system_status==3:
+                        self.get_logger().info('Drone initialized')
+                        # send command to request regular position updates
+                        self.request_data_stream(33, 1000000)
 
-                    self.request_data_stream(32, 1000000)
-                    # change mode to GUIDED
-                    self.change_mode("GUIDED")
-                    # move on to arming
-                    return('arming')
+                        self.request_data_stream(32, 1000000)
+                        # change mode to GUIDED
+                        self.change_mode("GUIDED")
+                        # move on to arming
+                        return('arming')
+                    else:
+                        return('init')
                 else:
                     return('init')
+            elif self.control_state == 'arming':
+                self.get_logger().info('Waiting for user commands. Press the START button to start the mission.')
+                return('init')
             else:
                 return('init')
-
-        elif self.control_state == 'arming':
-            if self.last_status.armed:
-                self.get_logger().info('Arming successful')
-                # armed - grab init alt for relative working
-                if self.last_pos:
-                    self.last_alt_rel = 0.0
-                    self.init_alt = self.last_pos.altitude
-                # send takeoff command
-                self.takeoff(20.0)
-                return('climbing')
-            elif self.state_timer > 60:
-                # timeout
-                self.get_logger().error('Failed to arm')
+        elif self.user_command == 'run':
+            if self.control_state == 'arming':
+                if self.last_status.armed:
+                    self.get_logger().info('Arming successful')
+                    # armed - grab init alt for relative working
+                    if self.last_pos:
+                        self.last_alt_rel = 0.0
+                        self.init_alt = self.last_pos.altitude
+                    # send takeoff command
+                    self.takeoff(20.0)
+                    return('climbing')
+                elif self.state_timer > 60:
+                    # timeout
+                    self.get_logger().error('Failed to arm')
+                    return('exit')
+                else:
+                    self.arm_request()
+                    return('arming')
+            elif self.control_state == 'climbing':
+                if self.last_alt_rel > 19.0:
+                    self.get_logger().info('Close enough to flight altitude')
+                    # move drone by sending setpoint message
+                    self.flyto(51.423, -2.671, self.init_alt - 30.0) # unexplained correction factor on altitude
+                    return('on_way')
+                elif self.state_timer > 60:
+                    # timeout
+                    self.get_logger().error('Failed to reach altitude')
+                    return('landing')
+                else:
+                    self.get_logger().info('Climbing, altitude {}m'.format(self.last_alt_rel))
+                    return('climbing')
+            elif self.control_state == 'on_way':
+                d_lon = self.last_pos.longitude - self.last_target.pose.position.longitude
+                d_lat = self.last_pos.latitude - self.last_target.pose.position.latitude
+                if (abs(d_lon) < 0.0001) & (abs(d_lat) < 0.0001):
+                    self.get_logger().info('Close enough to target delta={},{}'.format(d_lat,d_lon))
+                    return('landing')
+                elif self.state_timer > 60:
+                    # timeout
+                    self.get_logger().error('Failed to reach target')
+                    return('landing')
+                else:
+                    self.get_logger().info('Target error {},{}'.format(d_lat,d_lon))
+                    return('on_way')
+                
+            elif self.control_state == 'landing':
+                # return home and land
+                self.change_mode('RTL')
                 return('exit')
-            else:
-                self.arm_request()
-                return('arming')
+                #self.change_mode("Landing")
+                #return('landing')
 
-        elif self.control_state == 'climbing':
-            if self.last_alt_rel > 19.0:
-                self.get_logger().info('Close enough to flight altitude')
-                # move drone by sending setpoint message
-                self.flyto(51.423, -2.671, self.init_alt - 30.0) # unexplained correction factor on altitude
-                return('on_way')
-            elif self.state_timer > 60:
-                # timeout
-                self.get_logger().error('Failed to reach altitude')
-                return('landing')
-            else:
-                self.get_logger().info('Climbing, altitude {}m'.format(self.last_alt_rel))
-                return('climbing')
+            #elif self.control_state == 'RTL':
+                #if(self.current_mode != 'RTL'):
+                    #self.change_mode("RTL")
+                # return 'RTL'
 
-        elif self.control_state == 'on_way':
-            d_lon = self.last_pos.longitude - self.last_target.pose.position.longitude
-            d_lat = self.last_pos.latitude - self.last_target.pose.position.latitude
-            if (abs(d_lon) < 0.0001) & (abs(d_lat) < 0.0001):
-                self.get_logger().info('Close enough to target delta={},{}'.format(d_lat,d_lon))
-                return('landing')
-            elif self.state_timer > 60:
-                # timeout
-                self.get_logger().error('Failed to reach target')
-                return('landing')
-            else:
-                self.get_logger().info('Target error {},{}'.format(d_lat,d_lon))
-                return('on_way')
-            
-        elif self.control_state == 'landing':
-            # return home and land
-            self.change_mode("RTL")
-            return('exit')
-
-        elif self.control_state == 'exit':
-            # nothing else to do
-            return('exit')
+            elif self.control_state == 'exit':
+                # nothing else to do
+                return('exit')
+        elif self.user_command == 'pause':
+            return 0
+        else:
+            self.get_logger().error('Unepected user command here. Landing for emergency conditions.')
+            return 'landing'
 
     def timer_callback(self):
         new_state = self.state_transition()
