@@ -3,7 +3,7 @@ from rclpy.node import Node
 
 # import message definitions for receiving status and position
 from mavros_msgs.msg import State, WaypointList
-from sensor_msgs.msg import NavSatFix
+from sensor_msgs.msg import NavSatFix, BatteryState
 # import message definition for sending setpoint
 from geographic_msgs.msg import GeoPoseStamped
 
@@ -29,6 +29,8 @@ class FenswoodDroneController(Node):
         self.waypoints = []
         self.waypoints_index = 0
         self.in_fly = False
+        self.fail_safe = False
+        self.current_battery = None
         # create service clients for long command (datastream requests)...
         self.cmd_cli = self.create_client(CommandLong, '/vehicle_1/mavros/cmd/command')
         # ... for mode changes ...
@@ -37,6 +39,8 @@ class FenswoodDroneController(Node):
         self.arm_cli = self.create_client(CommandBool, '/vehicle_1/mavros/cmd/arming')
         # ... and for takeoff
         self.takeoff_cli = self.create_client(CommandTOL, '/vehicle_1/mavros/cmd/takeoff')
+
+        self.land_cli = self.create_client(CommandTOL, '/vehicle_1/mavroos/cmd/land')
         # create publisher for setpoint
         self.target_pub = self.create_publisher(GeoPoseStamped, '/vehicle_1/mavros/setpoint_position/global', 10)
         # and make a placeholder for the last sent target
@@ -57,6 +61,8 @@ class FenswoodDroneController(Node):
         mission_start_sub = self.create_subscription(Empty, '/mission_start', self.start_callback, 10)
 
         mission_waypoint_sub = self.create_subscription(WaypointList, '/vehicle_1/mavros/cutom_waypoints', self.waypoints_callback, 10)
+
+        battery_sub = self.create_subscription(BatteryState, '/vehicle_1/mavros/battery', self.battery_callback, 10)
 
         # mission_pause_sub = self.create_subscription(Empty, '/mission_pause', self.start_callback, 10)
 
@@ -90,6 +96,9 @@ class FenswoodDroneController(Node):
                                                                                    msg.pose.orientation.y,
                                                                                     msg.pose.orientation.z,
                                                                                     msg.pose.orientation.w))
+    def battery_callback(self,msg):
+        self.current_battery = (float) (msg.percentage * 100)
+        self.get_logger().info('Battery status: {}%'.format(self.current_battery))
         
     def start_callback(self,msg):
         if (self.user_command != 'run'):
@@ -129,6 +138,11 @@ class FenswoodDroneController(Node):
         arm_req.value = True
         future = self.arm_cli.call_async(arm_req)
         self.get_logger().info('Arm request sent')
+    
+    def land(self):
+        land_req = CommandTOL.Request()
+        future = self.land_cli.call_async(land_req)
+        self.get_logger().info('Land request sent')
 
     def takeoff(self,target_alt):
         takeoff_req = CommandTOL.Request()
@@ -153,6 +167,8 @@ class FenswoodDroneController(Node):
                         self.request_data_stream(33, 1000000)
 
                         self.request_data_stream(32, 1000000)
+
+                        self.request_data_stream(147, 1000000)
                         # change mode to GUIDED
                         self.change_mode("GUIDED")
                         # move on to arming
@@ -194,7 +210,7 @@ class FenswoodDroneController(Node):
                 elif self.state_timer > 60:
                     # timeout
                     self.get_logger().error('Failed to reach altitude')
-                    return('landing')
+                    return('RTL')
                 else:
                     self.get_logger().info('Climbing, altitude {}m'.format(self.last_alt_rel))
                     return('climbing')
@@ -214,26 +230,28 @@ class FenswoodDroneController(Node):
                         self.in_fly = False
                         return ('on_way')
                     else:
-                        return('landing')
+                        return('RTL')
                 elif self.state_timer > 300:
                     # timeout
                     self.get_logger().error('Failed to reach target')
-                    return('landing')
+                    return('RTL')
                 else:
                     self.get_logger().info('Target error {},{}'.format(d_lat,d_lon))
                     return('on_way')
                 
             elif self.control_state == 'landing':
                 # return home and land
-                self.change_mode('RTL')
-                return('exit')
+                # if(self.current_mode != 'LOITER'):
+                #    self.change_mode('LOITER')
+                self.land()
+                return('landing')
                 #self.change_mode("Landing")
                 #return('landing')
 
-            #elif self.control_state == 'RTL':
-                #if(self.current_mode != 'RTL'):
-                    #self.change_mode("RTL")
-                # return 'RTL'
+            elif self.control_state == 'RTL':
+                if(self.current_mode != 'RTL'):
+                    self.change_mode("RTL")
+                return 'RTL'
 
             elif self.control_state == 'exit':
                 # nothing else to do
