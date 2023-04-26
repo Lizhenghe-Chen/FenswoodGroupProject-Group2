@@ -66,7 +66,7 @@ class FenswoodDroneController(Node):
 
         # mission_pause_sub = self.create_subscription(Empty, '/mission_pause', self.start_callback, 10)
 
-        # mode_control_sub = self.create_subscription(Int16, '/vehicle_1/mode_control', self.mode_mannual_callback, 10)
+        mode_control_sub = self.create_subscription(Int16, '/vehicle_1/mode_control', self.mode_mannual_callback, 10)
 
         # create a ROS2 timer to run the control actions
         self.timer = self.create_timer(1.0, self.timer_callback)
@@ -111,6 +111,30 @@ class FenswoodDroneController(Node):
     def waypoints_callback(self,msg):
         self.waypoints = msg.waypoints
         self.get_logger().info('Waypoints set. {} waypoints passed to the drone.'.format(len(self.waypoints)))
+
+    def mode_mannual_callback(self,msg):
+        if (self.user_command == 'pause'):
+            if(msg.data == 0):
+                self.change_mode('MANNUAL')
+                self.current_mode = 'MANNUAL'
+                self.get_logger().info('Change to Mannual mode')
+            elif(msg.data == 1):
+                self.change_mode('LOITER')
+                self.current_mode = 'LOITER'
+                self.get_logger().info('Change to Loiter mode')
+            elif(msg.data == 2):
+                self.change_mode('GUIDED')
+                self.current_mode = 'GUIDED'
+                self.get_logger().info('Change to Guided mode')
+            elif(msg.data == 3):
+                self.change_mode('RTL')
+                self.current_mode = 'RTL'
+                self.get_logger().info('Change to RTL mode')
+            else:
+                self.get_logger().warn('Unepxeted changing mode. Please check as following. \n Input 0: Mannual Mode; \n Input 1: Loiter Mode; \n Input 2: Guided Mode; \n Input 3: RTL Mode;')
+        else:
+            self.get_logger().warn('Notice that: the mode can only be changed under Pause condition')
+
     
     def emergency_stop(self):
         return 0
