@@ -64,7 +64,7 @@ class FenswoodDroneController(Node):
 
         battery_sub = self.create_subscription(BatteryState, '/vehicle_1/mavros/battery', self.battery_callback, 10)
 
-        # mission_pause_sub = self.create_subscription(Empty, '/mission_pause', self.start_callback, 10)
+        mission_pause_sub = self.create_subscription(Empty, '/mission_pause', self.emergency_stop_callback, 10)
 
         mode_control_sub = self.create_subscription(Int16, '/vehicle_1/mode_control', self.mode_mannual_callback, 10)
 
@@ -136,8 +136,10 @@ class FenswoodDroneController(Node):
             self.get_logger().warn('Notice that: the mode can only be changed under Pause condition')
 
     
-    def emergency_stop(self):
-        return 0
+    def emergency_stop_callback(self,msg):
+        self.user_command = 'pause'
+        self.change_mode('LOITER')
+        self.get_logger().warn('Pause button is pressed and the drone will keep current position.')
 
     def request_data_stream(self,msg_id,msg_interval):
         cmd_req = CommandLong.Request()
@@ -281,7 +283,22 @@ class FenswoodDroneController(Node):
                 # nothing else to do
                 return('exit')
         elif self.user_command == 'pause':
-            return 0
+            if self.control_state == 'climbing':
+                return('climbing')
+            elif self.control_state == 'on_way':
+                return('on_way')
+                
+            elif self.control_state == 'landing':
+                return('landing')
+                #self.change_mode("Landing")
+                #return('landing')
+
+            elif self.control_state == 'RTL':
+                return 'RTL'
+
+            elif self.control_state == 'exit':
+                # nothing else to do
+                return('exit')
         else:
             self.get_logger().error('Unepected user command here. Landing for emergency conditions.')
             return 'landing'
