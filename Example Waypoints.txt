@@ -1,0 +1,31 @@
+{
+  "current_seq": 0,
+  "waypoints": [
+    {
+      "frame": 0,
+      "command": 0,
+      "is_current": false,
+      "autocontinue": false,
+      "param1": 0,
+      "param2": 0,
+      "param3": 0,
+      "param4": 0,
+      "x_lat": 51.4234154,
+      "y_long": -2.6681356,
+      "z_alt": 200
+    },
+    {
+      "frame": 0,
+      "command": 0,
+      "is_current": false,
+      "autocontinue": false,
+      "param1": 0,
+      "param2": 0,
+      "param3": 0,
+      "param4": 0,
+      "x_lat": 51.4228721,
+      "y_long": -2.6670186,
+      "z_alt": 200
+    }
+  ]
+}
