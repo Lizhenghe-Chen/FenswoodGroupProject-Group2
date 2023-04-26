@@ -1,0 +1,194 @@
+{
+  "layout": {
+    "first": {
+      "first": "RawMessages!1rv3bb2",
+      "second": {
+        "first": {
+          "first": "Publish!3obti53",
+          "second": "Publish!12wx33z",
+          "direction": "row"
+        },
+        "second": "RosOut!1ukq7ht",
+        "direction": "column",
+        "splitPercentage": 48.15950920245398
+      },
+      "direction": "column",
+      "splitPercentage": 28.114663726571116
+    },
+    "second": {
+      "direction": "row",
+      "first": {
+        "first": {
+          "first": "RawMessages!l9dzdw",
+          "second": "RawMessages!38wb7eo",
+          "direction": "column"
+        },
+        "second": "RawMessages!2p23zee",
+        "direction": "column",
+        "splitPercentage": 67.21174825198484
+      },
+      "second": {
+        "first": "ImageViewPanel!4evmpi6",
+        "second": {
+          "first": {
+            "first": "RawMessages!27elsbj",
+            "second": "Publish!2wcyjom",
+            "direction": "column",
+            "splitPercentage": 75.054704595186
+          },
+          "second": {
+            "first": "Publish!k6u9bw",
+            "second": "Publish!318a0z",
+            "direction": "column",
+            "splitPercentage": 75.054704595186
+          },
+          "direction": "row"
+        },
+        "direction": "column",
+        "splitPercentage": 49.61411245865491
+      },
+      "splitPercentage": 37.12820512820513
+    },
+    "direction": "row",
+    "splitPercentage": 45.742904841402336
+  },
+  "configById": {
+    "RawMessages!1rv3bb2": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/vehicle_1/mavros/cutom_waypoints",
+      "expansion": {
+        "1~waypoints": "e",
+        "0~waypoints": "e"
+      }
+    },
+    "Publish!3obti53": {
+      "topicName": "/vehicle_1/mavros/cutom_waypoints",
+      "datatype": "mavros_msgs/msg/WaypointList",
+      "buttonText": "Push",
+      "buttonTooltip": "Push waypoints data to the controller",
+      "buttonColor": "#00A871",
+      "advancedView": true,
+      "value": "{\n  \"current_seq\": 0,\n  \"waypoints\": [\n    {\n      \"frame\": 0,\n      \"command\": 0,\n      \"is_current\": false,\n      \"autocontinue\": false,\n      \"param1\": 0,\n      \"param2\": 0,\n      \"param3\": 0,\n      \"param4\": 0,\n      \"x_lat\": 51.4234154,\n      \"y_long\": -2.6681356,\n      \"z_alt\": 200\n    },\n    {\n      \"frame\": 0,\n      \"command\": 0,\n      \"is_current\": false,\n      \"autocontinue\": false,\n      \"param1\": 0,\n      \"param2\": 0,\n      \"param3\": 0,\n      \"param4\": 0,\n      \"x_lat\": 51.4228721,\n      \"y_long\": -2.6670186,\n      \"z_alt\": 200\n    }\n  ]\n}",
+      "foxglovePanelTitle": "Waypoints push"
+    },
+    "Publish!12wx33z": {
+      "topicName": "/vehicle_1/mode_control",
+      "datatype": "std_msgs/msg/Int16",
+      "buttonText": "Change",
+      "buttonTooltip": "Input data 0: Mannual Mode; 1: Loiter Mode; 2: Guided Mode; 3: RTL Mode",
+      "buttonColor": "#00A871",
+      "advancedView": true,
+      "value": "{\n  \"data\": 3\n}",
+      "foxglovePanelTitle": "Mode Change"
+    },
+    "RosOut!1ukq7ht": {
+      "searchTerms": [],
+      "minLogLevel": 2
+    },
+    "RawMessages!l9dzdw": {
+      "topicPath": "/vehicle_1/mavros/global_position/global",
+      "diffTopicPath": "",
+      "diffMethod": "custom",
+      "diffEnabled": false,
+      "showFullMessageForDiff": false,
+      "expansion": {
+        "status": "e",
+        "header": "c"
+      }
+    },
+    "RawMessages!38wb7eo": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/vehicle_1/mavros/local_position/pose",
+      "expansion": {
+        "stamp~header": "c",
+        "header": "c"
+      }
+    },
+    "RawMessages!2p23zee": {
+      "topicPath": "/vehicle_1/mavros/state",
+      "diffTopicPath": "",
+      "diffMethod": "custom",
+      "diffEnabled": false,
+      "showFullMessageForDiff": false,
+      "expansion": {
+        "header": "c"
+      }
+    },
+    "ImageViewPanel!4evmpi6": {
+      "cameraTopic": "/vehicle_1/camera/image_raw/compressed",
+      "enabledMarkerTopics": [],
+      "customMarkerTopicOptions": [],
+      "scale": 0.2,
+      "transformMarkers": true,
+      "synchronize": false,
+      "mode": "fit",
+      "zoomPercentage": 31.5,
+      "offset": [
+        0,
+        3.3599999999999994
+      ],
+      "pan": {
+        "x": 0,
+        "y": 1.0000000000000284
+      },
+      "zoom": 0.9999999999999999,
+      "rotation": 0,
+      "foxglovePanelTitle": "Camera View"
+    },
+    "RawMessages!27elsbj": {
+      "diffEnabled": false,
+      "diffMethod": "custom",
+      "diffTopicPath": "",
+      "showFullMessageForDiff": false,
+      "topicPath": "/vehicle_1/mavros/battery",
+      "expansion": {
+        "header": "c"
+      }
+    },
+    "Publish!2wcyjom": {
+      "topicName": "/mission_start",
+      "datatype": "std_msgs/msg/Empty",
+      "buttonText": "START",
+      "buttonTooltip": "",
+      "buttonColor": "#00A871",
+      "advancedView": false,
+      "value": "{}",
+      "foxglovePanelTitle": "Start the mission"
+    },
+    "Publish!k6u9bw": {
+      "topicName": "/vehicle_1/gimbal_tilt_cmd",
+      "datatype": "std_msgs/msg/Float32",
+      "buttonText": "Publish",
+      "buttonTooltip": "",
+      "buttonColor": "#00A871",
+      "advancedView": true,
+      "value": "{\n  \"data\": 0\n}"
+    },
+    "Publish!318a0z": {
+      "topicName": "/mission_pause",
+      "datatype": "std_msgs/msg/Empty",
+      "buttonText": "Stop",
+      "buttonTooltip": "This button will ask drone to stop and hold the position",
+      "buttonColor": "#a80000",
+      "advancedView": false,
+      "value": "{}",
+      "foxglovePanelTitle": "Pause"
+    }
+  },
+  "globalVariables": {
+    "track_id": 34
+  },
+  "userNodes": {},
+  "linkedGlobalVariables": [],
+  "playbackConfig": {
+    "speed": 1,
+    "messageOrder": "receiveTime",
+    "timeDisplayMethod": "ROS"
+  }
+}
