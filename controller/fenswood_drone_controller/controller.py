@@ -163,6 +163,7 @@ class FenswoodDroneController(Node):
                     return('init')
             elif self.control_state == 'arming':
                 self.get_logger().info('Waiting for user commands. Press the START button to start the mission.')
+                self.state_timer = 0
                 return('arming')
             else:
                 return('init')
