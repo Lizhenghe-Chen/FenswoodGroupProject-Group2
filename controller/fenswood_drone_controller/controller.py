@@ -104,6 +104,8 @@ class FenswoodDroneController(Node):
         if (self.user_command != 'run'):
             if(self.waypoints == None or len(self.waypoints) == 0):
                 self.get_logger().warn('START button pressed, but the waypoint list is empty.')
+            elif(self.control_state != 'armed'):
+                self.get_logger().warn('Please wait for the finish of initialisation.')
             else:
                 self.user_command = 'run'
                 self.get_logger().info('START button pressed. The process of controller will be started.')
@@ -116,19 +118,15 @@ class FenswoodDroneController(Node):
         if (self.user_command == 'pause'):
             if(msg.data == 0):
                 self.change_mode('MANNUAL')
-                self.current_mode = 'MANNUAL'
                 self.get_logger().info('Change to Mannual mode')
             elif(msg.data == 1):
                 self.change_mode('LOITER')
-                self.current_mode = 'LOITER'
                 self.get_logger().info('Change to Loiter mode')
             elif(msg.data == 2):
                 self.change_mode('GUIDED')
-                self.current_mode = 'GUIDED'
                 self.get_logger().info('Change to Guided mode')
             elif(msg.data == 3):
                 self.change_mode('RTL')
-                self.current_mode = 'RTL'
                 self.get_logger().info('Change to RTL mode')
             else:
                 self.get_logger().warn('Unepxeted changing mode. Please check as following. \n Input 0: Mannual Mode; \n Input 1: Loiter Mode; \n Input 2: Guided Mode; \n Input 3: RTL Mode;')
@@ -137,9 +135,12 @@ class FenswoodDroneController(Node):
 
     
     def emergency_stop_callback(self,msg):
-        self.user_command = 'pause'
-        self.change_mode('LOITER')
-        self.get_logger().warn('Pause button is pressed and the drone will keep current position.')
+        if self.control_state != 'init' and self.control_state != 'arming' and self.control_state != 'exit':
+            self.user_command = 'pause'
+            self.change_mode('LOITER')
+            self.get_logger().warn('Pause button is pressed and the drone will keep current position.')
+        else:
+            self.get_logger().warn('Pause button is not avialable under current state')
 
     def request_data_stream(self,msg_id,msg_interval):
         cmd_req = CommandLong.Request()
