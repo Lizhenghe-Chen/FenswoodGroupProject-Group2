@@ -104,7 +104,7 @@ class FenswoodDroneController(Node):
         if (self.user_command != 'run'):
             if(self.waypoints == None or len(self.waypoints) == 0):
                 self.get_logger().warn('START button pressed, but the waypoint list is empty.')
-            elif(self.control_state != 'armed'):
+            elif(self.control_state != 'arming'):
                 self.get_logger().warn('Please wait for the finish of initialisation.')
             else:
                 self.user_command = 'run'
