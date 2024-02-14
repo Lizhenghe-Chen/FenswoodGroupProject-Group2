@@ -1,4 +1,4 @@
-![IMG_0599](https://github.com/Lizhenghe-Chen/FenswoodGroupProject-Group2/assets/61171413/c87abd9c-8bf6-4292-956d-0b34c83d3152)# FenswoodGroupProject-Group2
+# FenswoodGroupProject-Group2
 This is the repository for Aerial Robotics Group Project from Group 2.
 
 Copyright <2023> <Yinan Shi>
